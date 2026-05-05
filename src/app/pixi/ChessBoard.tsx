@@ -1,5 +1,6 @@
 import * as pixi from "pixi.js";
 import { BoardCell } from "./BoardCell";
+import { ChessPiece } from "./ChessPiece";
 
 const cols = ["h", "g", "f", "e", "d", "c", "b", "a"];
 const rows = [8, 7, 6, 5, 4, 3, 2, 1];
@@ -20,6 +21,7 @@ export class ChessBoard {
     public piecesContainer: pixi.Container;
     public cells: BoardCell[];
     public idToCell: Record<string, BoardCell>;
+    public pieces: ChessPiece[];
     public whiteDown: boolean;
 
     constructor(app: pixi.Application, settings: BoardSettings | null) {
@@ -29,6 +31,7 @@ export class ChessBoard {
         this.piecesContainer = new pixi.Container();
         this.cells = [];
         this.idToCell = {};
+        this.pieces = [];
         this.whiteDown = true;
 
         if (settings === null) {
