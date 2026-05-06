@@ -56,7 +56,6 @@ export class ChessEngine {
             }
 
             if(data.type === "info") {
-                console.log("stockfish info :", data.line);
             }
         };
 

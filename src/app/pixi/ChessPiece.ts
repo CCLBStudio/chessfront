@@ -19,4 +19,12 @@ export class ChessPiece {
         this.sprite.setSize(targetSize * 0.65);
         this.container.pivot.set(this.sprite.width / 2, this.sprite.height / 2);
     }
+
+    public async setTexture(folderUrl: string, pieceId: string, targetSize: number) {
+        this.id = pieceId;
+        const texture = await pixi.Assets.load(`${folderUrl}${pieceId}.png`);
+        this.sprite.texture = texture;
+        this.sprite.setSize(targetSize * 0.65);
+        this.container.pivot.set(this.sprite.width / 2, this.sprite.height / 2);
+    }
 }

@@ -3,11 +3,7 @@ import { ChessPiece } from "./ChessPiece";
 export type BoardPieceMap = Record<string, string>;
 
 export async function SyncBoardPieces(board: ChessBoard, folderUrl: string, piecesBySquare: BoardPieceMap) {
-    for (const piece of board.pieces) {
-        piece.container.destroy({ children: true });
-    }
-    board.piecesContainer.removeChildren();
-    board.pieces = [];
+    board.clearPieces();
 
     for (const [position, piece] of Object.entries(piecesBySquare)) {
         const cell = board.idToCell[position];
@@ -15,10 +11,7 @@ export async function SyncBoardPieces(board: ChessBoard, folderUrl: string, piec
             const chessPiece = new ChessPiece(piece);
             await chessPiece.loadAndSetup(folderUrl, cell.size);
 
-            board.piecesContainer.addChild(chessPiece.container);
-            cell.centerContainerInCell(chessPiece.container);
-            
-            board.pieces.push(chessPiece);
+            board.registerPieceAtCell(cell, chessPiece);
         }
     }
 }

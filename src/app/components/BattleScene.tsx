@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as pixi from 'pixi.js';
 import { Chess } from 'chess.js';
 import { BoardSettings, ChessBoard } from '../pixi/ChessBoard';
-import { SyncBoardPieces, type BoardPieceMap } from '../pixi/boardPiecesInitializer';
+import { SyncBoardPieces } from '../pixi/boardPiecesInitializer';
 import { BoardOpeningAnimation } from '../pixi/BoardOpeningAnimation';
 import { chessStateToBoardMap } from '../pixi/fenToBoardMap';
 import { ChessEngine } from '../services/chessEngine';
@@ -12,12 +12,19 @@ import { IBoardAnimation } from '../pixi/IBoardAnimation';
 
 const DEFAULT_ENGINE_DEPTH = 10;
 const DEFAULT_SKILL_LEVEL = 10;
-const TURN_DELAY_MS = 350;
+const ANIMATION_DURATION = 0.1;
+
+type Move = {
+    from: string;
+    to: string;
+    capturedCellId?: string | null;
+    promotionPieceId?: string | null;
+};
 
 type ComputedTurn = {
+    moves: Move[];
     fen: string;
     san: string;
-    boardMap: BoardPieceMap;
 };
 
 export default function BattleScene() {
@@ -59,6 +66,25 @@ export default function BattleScene() {
         return "Game over";
     }
 
+    function getCapturedCellId(from: string, to: string, isEnPassant: boolean): string {
+        if (!isEnPassant) return to;
+        return `${to[0]}${from[1]}`;
+    }
+
+    function getPromotionPieceId(color: "w" | "b", promotion: string | undefined): string | null {
+        if (!promotion) return null;
+        const colorName = color === "w" ? "white" : "black";
+        const promotionNames: Record<string, string> = {
+            q: "queen",
+            r: "rook",
+            b: "bishop",
+            n: "knight",
+        };
+        const pieceName = promotionNames[promotion];
+        if (!pieceName) return null;
+        return `${colorName}_${pieceName}`;
+    }
+
     async function computeWholeGame(engine: ChessEngine, chess: Chess, isCancelled: () => boolean): Promise<ComputedTurn[]> {
         const turns: ComputedTurn[] = [];
 
@@ -78,14 +104,71 @@ export default function BattleScene() {
             const playedMove = chess.move({ from, to, promotion });
             if (!playedMove) break;
 
+            const moves: Move[] = [];
+
+            const capturedCellId = playedMove.captured
+                ? getCapturedCellId(playedMove.from, playedMove.to, playedMove.isEnPassant())
+                : null;
+
+            moves.push({
+                from: playedMove.from,
+                to: playedMove.to,
+                capturedCellId,
+                promotionPieceId: getPromotionPieceId(playedMove.color, playedMove.promotion)
+            });
+
+            if(playedMove.isKingsideCastle()){
+                moves.push({
+                    from: playedMove.color === "w" ? "h1" : "h8",
+                    to: playedMove.color === "w" ? "f1" : "f8"
+                });
+            }
+
+            else if(playedMove.isQueensideCastle()){
+                moves.push({
+                    from: playedMove.color === "w" ? "a1" : "a8",
+                    to: playedMove.color === "w" ? "d1" : "d8"
+                });
+            }
+
             turns.push({
+                moves,
                 fen: chess.fen(),
                 san: playedMove.san,
-                boardMap: chessStateToBoardMap(chess),
             });
         }
 
         return turns;
+    }
+
+    async function playGame(computedTurns: ComputedTurn[], board: ChessBoard, cancelled: boolean): Promise<void> {
+        for (const turn of computedTurns) {
+            if (cancelled) break;
+
+            for(const move of turn.moves){
+                const fromCell = board.getCellById(move.from);
+                const toCell = board.getCellById(move.to);
+
+                if (!fromCell || !toCell) continue;
+
+                if (move.capturedCellId) {
+                    const capturedCell = board.getCellById(move.capturedCellId);
+                    if (capturedCell) {
+                        await board.capturePieceAtCell(capturedCell, ANIMATION_DURATION, ANIMATION_DURATION / 2);
+                    }
+                }
+
+                await board.movePiece(fromCell, toCell, ANIMATION_DURATION);
+                
+                if (move.promotionPieceId) {
+                    await board.promotePieceAtCell(toCell, move.promotionPieceId);
+                }
+            }
+
+            setLastMove(turn.san);
+            setFen(turn.fen);
+        }
+
     }
 
     useEffect(() => {
@@ -137,13 +220,7 @@ export default function BattleScene() {
             await openingAnimationCompleted;
             if (cancelled) return;
 
-            for (const turn of computedTurns) {
-                if (cancelled) break;
-                setLastMove(turn.san);
-                setFen(turn.fen);
-                await SyncBoardPieces(board, boardSettings.piecesFolderUrl, turn.boardMap);
-                await new Promise((resolve) => setTimeout(resolve, TURN_DELAY_MS));
-            }
+            await playGame(computedTurns, board, cancelled);
 
             setThinking(false);
             setGameOverReason(getGameOverReason(chessRef.current));
