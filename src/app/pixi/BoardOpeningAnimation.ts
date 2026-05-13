@@ -44,4 +44,9 @@ export class BoardOpeningAnimation implements IBoardAnimation {
             this.tl.kill();
         }
     }
+
+    progress(): number {
+        if (!this.tl) return 0;
+        return this.tl.progress();
+    }
 }

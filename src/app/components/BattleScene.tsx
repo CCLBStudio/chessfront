@@ -9,6 +9,7 @@ import { BoardOpeningAnimation } from '../pixi/BoardOpeningAnimation';
 import { chessStateToBoardMap } from '../pixi/fenToBoardMap';
 import { ChessEngine } from '../services/chessEngine';
 import { IBoardAnimation } from '../pixi/IBoardAnimation';
+import WaitingMessage from './WaitingMessage';
 
 const DEFAULT_ENGINE_DEPTH = 10;
 const DEFAULT_SKILL_LEVEL = 10;
@@ -33,6 +34,7 @@ export default function BattleScene() {
     const appRef = useRef<pixi.Application | null>(null);
     const boardRef = useRef<ChessBoard | null>(null);
     const openingAnimRef = useRef<IBoardAnimation | null>(null);
+    const [isOpeningAnimCompleted, setIsOpeningAnimCompleted] = useState(false);
     const chessRef = useRef(new Chess());
     const engineRef = useRef<ChessEngine | null>(null);
 
@@ -117,14 +119,14 @@ export default function BattleScene() {
                 promotionPieceId: getPromotionPieceId(playedMove.color, playedMove.promotion)
             });
 
-            if(playedMove.isKingsideCastle()){
+            if (playedMove.isKingsideCastle()) {
                 moves.push({
                     from: playedMove.color === "w" ? "h1" : "h8",
                     to: playedMove.color === "w" ? "f1" : "f8"
                 });
             }
 
-            else if(playedMove.isQueensideCastle()){
+            else if (playedMove.isQueensideCastle()) {
                 moves.push({
                     from: playedMove.color === "w" ? "a1" : "a8",
                     to: playedMove.color === "w" ? "d1" : "d8"
@@ -145,7 +147,7 @@ export default function BattleScene() {
         for (const turn of computedTurns) {
             if (cancelled) break;
 
-            for(const move of turn.moves){
+            for (const move of turn.moves) {
                 const fromCell = board.getCellById(move.from);
                 const toCell = board.getCellById(move.to);
 
@@ -159,7 +161,7 @@ export default function BattleScene() {
                 }
 
                 await board.movePiece(fromCell, toCell, ANIMATION_DURATION);
-                
+
                 if (move.promotionPieceId) {
                     await board.promotePieceAtCell(toCell, move.promotionPieceId);
                 }
@@ -199,11 +201,11 @@ export default function BattleScene() {
 
             const openingAnim: IBoardAnimation = new BoardOpeningAnimation();
             openingAnimRef.current = openingAnim;
-            
+
             const openingAnimationCompleted = new Promise<void>((resolve) => {
                 openingAnim.play(board, {
                     onComplete: () => {
-                        console.log("opening animation complete");
+                        setIsOpeningAnimCompleted(true);
                         resolve();
                     }
                 });
@@ -239,29 +241,34 @@ export default function BattleScene() {
     }, []);
 
     return (
-        <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
-            <div
-                style={{
-                    position: 'absolute',
-                    top: 12,
-                    left: 12,
-                    zIndex: 10,
-                    background: 'rgba(18,18,18,0.75)',
-                    color: '#fff',
-                    padding: '8px 10px',
-                    borderRadius: 8,
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                }}
-            >
-                <div>Status: {thinking ? 'Engine thinking' : gameOverReason ?? 'Running'}</div>
-                <div>Last move: {lastMove ?? '-'}</div>
-                <div>FEN: {fen}</div>
+        <>
+            {(thinking && isOpeningAnimCompleted) && <WaitingMessage />}
+            <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: 12,
+                        left: 12,
+                        zIndex: 10,
+                        background: 'rgba(18,18,18,0.75)',
+                        color: '#fff',
+                        padding: '8px 10px',
+                        borderRadius: 8,
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                    }}
+                >
+                    <div>Status: {thinking ? 'Engine thinking' : gameOverReason ?? 'Running'}</div>
+                    <div>Last move: {lastMove ?? '-'}</div>
+                    <div>FEN: {fen}</div>
+                </div>
+                <div
+                    ref={containerRef}
+                    style={{ width: '100%', height: '100vh', position: 'relative' }}
+                />
             </div>
-            <div
-                ref={containerRef}
-                style={{ width: '100%', height: '100vh', position: 'relative' }}
-            />
-        </div>
+
+        </>
+
     );
 }

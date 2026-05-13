@@ -1,0 +1,39 @@
+.container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: linear-gradient(135deg,
+            rgba(0, 0, 0, 0.4),
+            rgba(50, 50, 50, 0.4));
+
+    z-index: 9999;
+    backdrop-filter: blur(2px);
+
+    animation: fadeIn 250ms ease-out;
+}
+
+.message {
+    color: white;
+    font-size: xx-large;
+    text-align: center;
+
+    padding: 1rem 2rem;
+    border-radius: 8px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
