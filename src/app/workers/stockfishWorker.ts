@@ -15,11 +15,16 @@ type NewGameMessage = {
     type: "newGame";
 };
 
+type SetSkillLevelMessage = {
+    type: "setSkillLevel";
+    skillLevel: number;
+};
+
 type TerminateMessage = {
     type: "terminate";
 };
 
-type IncomingMessage = InitMessage | ComputeBestMoveMessage | NewGameMessage | TerminateMessage;
+type IncomingMessage = InitMessage | ComputeBestMoveMessage | NewGameMessage | SetSkillLevelMessage | TerminateMessage;
 
 type OutgoingMessage =
     | { type: "ready" }
@@ -35,6 +40,7 @@ const STOCKFISH_ENGINE_JS_URL = "/stockfish/stockfish.js";
 let stockfishWorker: Worker | null = null;
 let stockfishBootstrapPromise: Promise<void> | null = null;
 let isReady = false;
+let isThinking = false;
 let defaultDepth = DEFAULT_DEPTH;
 let defaultSkillLevel = DEFAULT_SKILL_LEVEL;
 let pendingRequestId: string | null = null;
@@ -45,7 +51,7 @@ function postToHost(message: OutgoingMessage) {
 }
 
 function debugInfo(message: string) {
-    postToHost({ type: "info", line: `[stockfish-wrapper] ${message}` });
+    console.log(`[stockfish-wrapper] ${message}`);
 }
 
 function sendToStockfish(command: string) {
@@ -102,7 +108,7 @@ async function setupStockfish() {
             const line = (event.data ?? "").toString().trim();
             hasReceivedStockfishMessage = true;
             clearTimeout(startupWatchdog);
-            debugInfo(`stockfish worker message : ${line}`);
+            //debugInfo(`stockfish worker message : ${line}`);
             if (!line) return;
 
             postToHost({ type: "info", line });
@@ -114,6 +120,7 @@ async function setupStockfish() {
             }
 
             if (line.startsWith("bestmove")) {
+                isThinking = false;
                 const [, bestmove = "(none)"] = line.split(" ");
                 if (pendingRequestId) {
                     postToHost({ type: "bestmove", requestId: pendingRequestId, bestmove });
@@ -168,13 +175,26 @@ self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
         await setupStockfish();
 
         if (msg.type === "init") {
-            if (typeof msg.depth === "number") defaultDepth = msg.depth;
+            if (typeof msg.depth === "number") 
+                {
+                    defaultDepth = msg.depth;
+                    debugInfo(`stockfish worker depth set to ${defaultDepth}`);
+                }
             if (typeof msg.skillLevel === "number") {
                 defaultSkillLevel = msg.skillLevel;
+                debugInfo(`stockfish worker skill level set to ${defaultSkillLevel}`);
                 sendToStockfish(`setoption name Skill Level value ${defaultSkillLevel}`);
             }
 
             sendToStockfish("isready");
+            return;
+        }
+
+        if(msg.type === "setSkillLevel") {
+            //sendToStockfish("stop");
+            defaultSkillLevel = msg.skillLevel;
+            debugInfo(`stockfish worker skill level set to ${defaultSkillLevel}`);
+            sendToStockfish(`setoption name Skill Level value ${defaultSkillLevel}`);
             return;
         }
 
@@ -189,13 +209,21 @@ self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
                 sendToStockfish("isready");
             }
 
+            if(isThinking){
+                postToHost({
+                    type: "error",
+                    error: "Engine is already thinking",
+                });
+                return;
+            }
+
             const depth = msg.depth ?? defaultDepth;
+            isThinking = true;
             pendingRequestId = msg.requestId;
-            sendToStockfish("stop");
-            sendToStockfish("ucinewgame");
             sendToStockfish(`position fen ${msg.fen}`);
             sendToStockfish(`go depth ${depth}`);
         }
+
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown Stockfish worker error";
         postToHost({ type: "error", error: errorMessage });

@@ -7,13 +7,25 @@ import { BoardSettings, ChessBoard } from '../pixi/ChessBoard';
 import { SyncBoardPieces } from '../pixi/boardPiecesInitializer';
 import { BoardOpeningAnimation } from '../pixi/BoardOpeningAnimation';
 import { chessStateToBoardMap } from '../pixi/fenToBoardMap';
-import { ChessEngine } from '../services/chessEngine';
+import { ChessEngine, WorkerOptions } from '../services/chessEngine';
 import { IBoardAnimation } from '../pixi/IBoardAnimation';
 import WaitingMessage from './WaitingMessage';
 
-const DEFAULT_ENGINE_DEPTH = 10;
-const DEFAULT_SKILL_LEVEL = 10;
 const ANIMATION_DURATION = 0.1;
+
+const defaultPlayerStrength: TeamStrength = {
+    depth: [10, 12],
+    skillLevel: [17, 19]
+};
+const defaultOpponentStrength: TeamStrength = {
+    depth: [9, 11],
+    skillLevel: [14, 16]
+};
+
+type TeamStrength = {
+    depth: [number, number];
+    skillLevel: [number, number];
+};
 
 type Move = {
     from: string;
@@ -28,6 +40,17 @@ type ComputedTurn = {
     san: string;
 };
 
+function randomIntFromRange([a, b]: [number, number]): number {
+    let min = Math.ceil(Math.min(a, b));
+    let max = Math.floor(Math.max(a, b));
+
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+        throw new Error("Invalid range: values must be finite numbers");
+    }
+
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 export default function BattleScene() {
     const containerRef = useRef<HTMLDivElement>(null);
     const isInitialized = useRef(false);
@@ -37,6 +60,7 @@ export default function BattleScene() {
     const [isOpeningAnimCompleted, setIsOpeningAnimCompleted] = useState(false);
     const chessRef = useRef(new Chess());
     const engineRef = useRef<ChessEngine | null>(null);
+    const cancelledRef = useRef(false);
 
     const [fen, setFen] = useState(chessRef.current.fen());
     const [lastMove, setLastMove] = useState<string | null>(null);
@@ -87,15 +111,26 @@ export default function BattleScene() {
         return `${colorName}_${pieceName}`;
     }
 
-    async function computeWholeGame(engine: ChessEngine, chess: Chess, isCancelled: () => boolean): Promise<ComputedTurn[]> {
+    async function computeWholeGame(
+        engine: ChessEngine,
+        chess: Chess,
+        isCancelled: () => boolean,
+        playerTeamStrength: TeamStrength,
+        opponentTeamStrength: TeamStrength
+    ): Promise<ComputedTurn[]> {
         const turns: ComputedTurn[] = [];
 
         engine.newGame();
 
+        let i = 0;
         while (!isCancelled() && !chess.isGameOver()) {
-            const bestMoveUci = await engine.getBestMove(chess.fen(), { depth: DEFAULT_ENGINE_DEPTH });
+            const currentTurn = chess.turn();
+            const teamStrength = currentTurn === "w" ? playerTeamStrength : opponentTeamStrength;
+
+            const bestMoveUci = await engine.getBestMove(chess.fen(), currentTurn === "w", { depth: randomIntFromRange(teamStrength.depth) });
 
             if (!bestMoveUci || bestMoveUci === "(none)" || bestMoveUci.length < 4) {
+                console.log("No best move found", bestMoveUci);
                 break;
             }
 
@@ -104,7 +139,9 @@ export default function BattleScene() {
             const promotion = bestMoveUci.length > 4 ? bestMoveUci[4] : undefined;
 
             const playedMove = chess.move({ from, to, promotion });
-            if (!playedMove) break;
+            if (!playedMove) {
+                break;
+            }
 
             const moves: Move[] = [];
 
@@ -138,6 +175,7 @@ export default function BattleScene() {
                 fen: chess.fen(),
                 san: playedMove.san,
             });
+            i++;
         }
 
         return turns;
@@ -176,7 +214,7 @@ export default function BattleScene() {
     useEffect(() => {
         if (isInitialized.current) return;
         isInitialized.current = true;
-        let cancelled = false;
+        cancelledRef.current = false;
 
         (async () => {
             const app = await InitPixiApp();
@@ -213,23 +251,35 @@ export default function BattleScene() {
 
             const engine = new ChessEngine();
             engineRef.current = engine;
-            await engine.init({ depth: DEFAULT_ENGINE_DEPTH, skillLevel: DEFAULT_SKILL_LEVEL });
+            const playerWorkerOptions : WorkerOptions = {
+                depth: randomIntFromRange(defaultOpponentStrength.depth),
+                skillLevel: randomIntFromRange(defaultPlayerStrength.skillLevel)
+            }
+            const opponentWorkerOptions : WorkerOptions = {
+                depth: randomIntFromRange(defaultOpponentStrength.depth),
+                skillLevel: randomIntFromRange(defaultOpponentStrength.skillLevel)
+            }
+            await engine.init(playerWorkerOptions, opponentWorkerOptions);
+            //await engine.init({ depth: DEFAULT_ENGINE_DEPTH, skillLevel: DEFAULT_SKILL_LEVEL });
 
             setThinking(true);
-            const computedTurns = await computeWholeGame(engine, chessRef.current, () => cancelled);
+            cancelledRef.current = false;
+
+            const computedTurns = await computeWholeGame(engine, chessRef.current, () => cancelledRef.current, defaultPlayerStrength, defaultOpponentStrength);
+
             setThinking(false);
 
             await openingAnimationCompleted;
-            if (cancelled) return;
+            if (cancelledRef.current) return;
 
-            await playGame(computedTurns, board, cancelled);
+            await playGame(computedTurns, board, cancelledRef.current);
 
             setThinking(false);
             setGameOverReason(getGameOverReason(chessRef.current));
         })();
 
         return () => {
-            cancelled = true;
+            cancelledRef.current = true;
             openingAnimRef.current?.kill();
             openingAnimRef.current = null;
             engineRef.current?.terminate();
