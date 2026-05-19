@@ -51,7 +51,7 @@ function postToHost(message: OutgoingMessage) {
 }
 
 function debugInfo(message: string) {
-    console.log(`[stockfish-wrapper] ${message}`);
+    //console.log(`[stockfish-wrapper] ${message}`);
 }
 
 function sendToStockfish(command: string) {

@@ -1,18 +1,24 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import style from "../styles/waitingMessageStyle.module.css"
 
-export type WaitingMessageOptions = {
-    message?: string;
-}
+export default function WaitingMessage() {
 
-export default function WaitingMessage(props: WaitingMessageOptions) {
+    const message = "Loading fight";
+    const [dots, setDots] = useState("");
 
-    const { message = "loading fight..." } = props;
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setDots((prev) => prev.length >= 3 ? "" : prev + ".");
+        }, 500);
+        return () => clearInterval(interval);
+    }, []);
+
     return (
         <div className={style.container}>
             <span className={style.message}>
-                {message}
+                {message}{dots}
             </span>
         </div>
     );

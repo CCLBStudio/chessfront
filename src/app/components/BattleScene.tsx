@@ -7,9 +7,11 @@ import { BoardSettings, ChessBoard } from '../pixi/ChessBoard';
 import { SyncBoardPieces } from '../pixi/boardPiecesInitializer';
 import { BoardOpeningAnimation } from '../pixi/BoardOpeningAnimation';
 import { chessStateToBoardMap } from '../pixi/fenToBoardMap';
-import { ChessEngine, WorkerOptions } from '../services/chessEngine';
+import { ChessEngine, WorkerOptions, GameOverReason } from '../services/chessEngine';
 import { IBoardAnimation } from '../pixi/IBoardAnimation';
 import WaitingMessage from './WaitingMessage';
+import { roll } from '../services/loot';
+import GameOverMessage from './GameOverMessage';
 
 const ANIMATION_DURATION = 0.1;
 
@@ -18,8 +20,8 @@ const defaultPlayerStrength: TeamStrength = {
     skillLevel: [17, 19]
 };
 const defaultOpponentStrength: TeamStrength = {
-    depth: [9, 11],
-    skillLevel: [14, 16]
+    depth: [1, 2],
+    skillLevel: [1, 2]
 };
 
 type TeamStrength = {
@@ -65,7 +67,7 @@ export default function BattleScene() {
     const [fen, setFen] = useState(chessRef.current.fen());
     const [lastMove, setLastMove] = useState<string | null>(null);
     const [thinking, setThinking] = useState(false);
-    const [gameOverReason, setGameOverReason] = useState<string | null>(null);
+    const [gameOverReason, setGameOverReason] = useState<GameOverReason | null>(null);
 
     async function InitPixiApp(): Promise<pixi.Application | null> {
         if (!containerRef.current) return null;
@@ -82,14 +84,14 @@ export default function BattleScene() {
         return app;
     }
 
-    function getGameOverReason(chess: Chess): string | null {
+    function getGameOverReason(chess: Chess): GameOverReason | null {
         if (!chess.isGameOver()) return null;
-        if (chess.isCheckmate()) return "Checkmate";
-        if (chess.isStalemate()) return "Stalemate";
-        if (chess.isThreefoldRepetition()) return "Threefold repetition";
-        if (chess.isInsufficientMaterial()) return "Insufficient material";
-        if (chess.isDraw()) return "Draw";
-        return "Game over";
+        if (chess.isCheckmate()) return 'CHECKMATE';
+        if (chess.isStalemate()) return 'STALEMATE';
+        if (chess.isThreefoldRepetition()) return "THREEFOLD_REPETITION";
+        if (chess.isInsufficientMaterial()) return "INSUFFICIENT_MATERIAL";
+        if (chess.isDraw()) return "DRAW";
+        return "UNKNOWN";
     }
 
     function getCapturedCellId(from: string, to: string, isEnPassant: boolean): string {
@@ -275,7 +277,12 @@ export default function BattleScene() {
             await playGame(computedTurns, board, cancelledRef.current);
 
             setThinking(false);
-            setGameOverReason(getGameOverReason(chessRef.current));
+            const gameOverReason = getGameOverReason(chessRef.current);
+            setGameOverReason(gameOverReason);
+            if (gameOverReason) {
+                const loot = roll(gameOverReason);
+                console.log("Loot:", loot);
+            }
         })();
 
         return () => {
@@ -317,7 +324,7 @@ export default function BattleScene() {
                     style={{ width: '100%', height: '100vh', position: 'relative' }}
                 />
             </div>
-
+            {gameOverReason && <GameOverMessage gameOverReason={gameOverReason} />}
         </>
 
     );

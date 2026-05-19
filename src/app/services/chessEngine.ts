@@ -1,9 +1,3 @@
-type EngineInitOptions = {
-    depth?: number;
-    skillLevel?: number;
-    timeoutMs?: number;
-};
-
 type ComputeMoveOptions = {
     depth?: number;
 };
@@ -12,6 +6,17 @@ export type WorkerOptions = {
     depth: number;
     skillLevel: number;
 };
+
+ const GameOverReason = {
+    Checkmate: "CHECKMATE",
+    Stalemate: "STALEMATE",
+    InsufficientMaterial: "INSUFFICIENT_MATERIAL",
+    ThreeforldRepetition: "THREEFOLD_REPETITION",
+    Draw: "DRAW",
+    Unknown: "UNKNOWN",
+} as const;
+
+export type GameOverReason = typeof GameOverReason[keyof typeof GameOverReason];
 
 type WorkerResponse =
     | { type: "ready" }
