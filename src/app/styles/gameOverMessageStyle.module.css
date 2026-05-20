@@ -6,14 +6,15 @@
     height: 100vh;
 
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
 
     background: linear-gradient(135deg,
             rgba(0, 0, 0, 0.4),
             rgba(50, 50, 50, 0.4));
 
-    z-index: 9999;
+    z-index: 99;
     backdrop-filter: blur(2px);
 
     animation: fadeIn 250ms ease-out;
@@ -21,13 +22,22 @@
 
 .message {
     color: white;
-    width: 400px;
+    width: 500px;
+    margin-top: 150px;
 
     font-family: var(--font-trajan), sans-serif;
     font-size: xx-large;
     text-align: center;
 
     padding: 1rem 3rem;
+}
+
+.lootMessage {
+    color: white;
+    font-family: var(--font-trajan), sans-serif;
+    font-size: larger;
+    text-align: center;
+
 }
 
 @keyframes fadeIn {

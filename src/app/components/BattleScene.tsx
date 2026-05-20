@@ -10,10 +10,14 @@ import { chessStateToBoardMap } from '../pixi/fenToBoardMap';
 import { ChessEngine, WorkerOptions, GameOverReason } from '../services/chessEngine';
 import { IBoardAnimation } from '../pixi/IBoardAnimation';
 import WaitingMessage from './WaitingMessage';
-import { roll } from '../services/loot';
+import { roll, Loot } from '../services/loot';
 import GameOverMessage from './GameOverMessage';
+import confetti from 'canvas-confetti';
+import { wait } from '@/utils/wait';
+
 
 const ANIMATION_DURATION = 0.1;
+const piecesFolderUrl = "/assets/pieces/default/";
 
 const defaultPlayerStrength: TeamStrength = {
     depth: [10, 12],
@@ -63,6 +67,8 @@ export default function BattleScene() {
     const chessRef = useRef(new Chess());
     const engineRef = useRef<ChessEngine | null>(null);
     const cancelledRef = useRef(false);
+    const winnerRef = useRef<string | null>(null);
+    const lootRef = useRef<Loot | null>(null);
 
     const [fen, setFen] = useState(chessRef.current.fen());
     const [lastMove, setLastMove] = useState<string | null>(null);
@@ -180,6 +186,10 @@ export default function BattleScene() {
             i++;
         }
 
+        if(chess.isCheckmate()){
+            winnerRef.current = chess.turn() === "w" ? "opponent" : "player";
+        }
+
         return turns;
     }
 
@@ -213,10 +223,41 @@ export default function BattleScene() {
 
     }
 
+  async function playConfetti(): Promise<void> {
+    let promise: Promise<void> = Promise.resolve();
+    const confettiSettings = [
+      {
+        origin: { x: 0.25, y: .6 },
+        particleCount: 150,
+        spread: 100,
+        ticks: 200,
+      },
+      {
+        origin: { x: 0.75, y: .6 },
+        particleCount: 150,
+        spread: 100,
+        ticks: 200,
+      },
+      {
+        origin: { x: 0.5, y: 0.35 },
+        particleCount: 150,
+        spread: 100,
+        ticks: 200,
+      },
+    ]
+    for (let i = 0; i < confettiSettings.length ; i++) {
+      promise = confetti(confettiSettings[i]);
+      await wait(100);
+    }
+
+    return promise;
+  }
+
     useEffect(() => {
         if (isInitialized.current) return;
         isInitialized.current = true;
         cancelledRef.current = false;
+        confetti.Promise = Promise;
 
         (async () => {
             const app = await InitPixiApp();
@@ -229,7 +270,7 @@ export default function BattleScene() {
                 hexWhiteColor: 0xebecd0,
                 hexBlackColor: 0x739552,
                 cellSize: w < h ? w / 8 : h / 8,
-                piecesFolderUrl: "/assets/pieces/default/",
+                piecesFolderUrl: piecesFolderUrl,
                 whiteDown: true
             }
 
@@ -262,7 +303,6 @@ export default function BattleScene() {
                 skillLevel: randomIntFromRange(defaultOpponentStrength.skillLevel)
             }
             await engine.init(playerWorkerOptions, opponentWorkerOptions);
-            //await engine.init({ depth: DEFAULT_ENGINE_DEPTH, skillLevel: DEFAULT_SKILL_LEVEL });
 
             setThinking(true);
             cancelledRef.current = false;
@@ -278,10 +318,16 @@ export default function BattleScene() {
 
             setThinking(false);
             const gameOverReason = getGameOverReason(chessRef.current);
-            setGameOverReason(gameOverReason);
             if (gameOverReason) {
-                const loot = roll(gameOverReason);
-                console.log("Loot:", loot);
+                lootRef.current = roll(gameOverReason);
+                console.log("Loot:", lootRef.current);
+            }
+            await wait(500);
+
+            setGameOverReason(gameOverReason);
+
+            if(winnerRef.current === "player") {
+                await playConfetti();
             }
         })();
 
@@ -324,7 +370,13 @@ export default function BattleScene() {
                     style={{ width: '100%', height: '100vh', position: 'relative' }}
                 />
             </div>
-            {gameOverReason && <GameOverMessage gameOverReason={gameOverReason} />}
+        {gameOverReason && <GameOverMessage
+          gameOverReason={gameOverReason}
+          playerWon={winnerRef.current === 'player'}
+          loot={lootRef.current}
+          piecesFolderUrl={piecesFolderUrl}
+          pixiApp={appRef.current}
+        />}
         </>
 
     );
