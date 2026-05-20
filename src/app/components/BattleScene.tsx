@@ -60,7 +60,8 @@ function randomIntFromRange([a, b]: [number, number]): number {
 export default function BattleScene() {
     const containerRef = useRef<HTMLDivElement>(null);
     const isInitialized = useRef(false);
-    const appRef = useRef<pixi.Application | null>(null);
+  const gameAppRef = useRef<pixi.Application | null>(null);
+  const uiAppRef = useRef<pixi.Application | null>(null);
     const boardRef = useRef<ChessBoard | null>(null);
     const openingAnimRef = useRef<IBoardAnimation | null>(null);
     const [isOpeningAnimCompleted, setIsOpeningAnimCompleted] = useState(false);
@@ -76,18 +77,36 @@ export default function BattleScene() {
     const [gameOverReason, setGameOverReason] = useState<GameOverReason | null>(null);
 
     async function InitPixiApp(): Promise<pixi.Application | null> {
-        if (!containerRef.current) return null;
+      if (!containerRef.current) return null;
 
-        const app = new pixi.Application();
-        await app.init({
-            resizeTo: containerRef.current,
-            backgroundAlpha: 0,
-            antialias: true,
-        });
+      const gameApp = new pixi.Application();
+      const uiApp = new pixi.Application();
 
-        containerRef.current.appendChild(app.canvas as HTMLCanvasElement);
-        appRef.current = app;
-        return app;
+      await gameApp.init({
+          resizeTo: containerRef.current,
+          backgroundAlpha: 0,
+          antialias: false,
+      });
+
+      await uiApp.init({
+          resizeTo: containerRef.current,
+          backgroundAlpha: 0,
+          antialias: true,
+      });
+
+      gameApp.canvas.style.position = "absolute";
+      gameApp.canvas.style.zIndex = "1";
+
+      uiApp.canvas.style.position = 'absolute';
+      uiApp.canvas.style.zIndex = "200";
+
+      containerRef.current.appendChild(gameApp.canvas as HTMLCanvasElement);
+      containerRef.current.appendChild(uiApp.canvas as HTMLCanvasElement);
+
+      gameAppRef.current = gameApp;
+      uiAppRef.current = uiApp;
+
+      return gameApp;
     }
 
     function getGameOverReason(chess: Chess): GameOverReason | null {
@@ -338,8 +357,10 @@ export default function BattleScene() {
             engineRef.current?.terminate();
             engineRef.current = null;
             boardRef.current = null;
-            appRef.current?.destroy(true);
-            appRef.current = null;
+            gameAppRef.current?.destroy(true);
+            uiAppRef.current?.destroy(true);
+            gameAppRef.current = null;
+            uiAppRef.current = null;
         };
     }, []);
 
@@ -375,7 +396,7 @@ export default function BattleScene() {
           playerWon={winnerRef.current === 'player'}
           loot={lootRef.current}
           piecesFolderUrl={piecesFolderUrl}
-          pixiApp={appRef.current}
+          uiApp={uiAppRef.current}
         />}
         </>
 
