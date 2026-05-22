@@ -75,10 +75,10 @@ export default function GameOverMessage(props: GameOverScreenProps) {
 
       {showButtons && (
         <div className={style.buttonsContainer}>
-          <button className={style.button}>
+          <button className={style.button} onClick={props.onNewBattle}>
             New Battle
           </button>
-          <button className={style.button}>
+          <button className={style.button} onClick={props.onEditArmy}>
             Edit Army
           </button>
         </div>

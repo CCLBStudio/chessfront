@@ -59,7 +59,6 @@ function randomIntFromRange([a, b]: [number, number]): number {
 
 export default function BattleScene() {
     const containerRef = useRef<HTMLDivElement>(null);
-    const isInitialized = useRef(false);
     const gameAppRef = useRef<pixi.Application | null>(null);
     const uiAppRef = useRef<pixi.Application | null>(null);
     const boardRef = useRef<ChessBoard | null>(null);
@@ -68,6 +67,7 @@ export default function BattleScene() {
     const chessRef = useRef(new Chess());
     const engineRef = useRef<ChessEngine | null>(null);
     const cancelledRef = useRef(false);
+    const gameSessionRef = useRef<number>(0);
     const winnerRef = useRef<string | null>(null);
     const lootRef = useRef<Loot | null>(null);
 
@@ -76,7 +76,7 @@ export default function BattleScene() {
     const [thinking, setThinking] = useState(false);
     const [gameOverReason, setGameOverReason] = useState<GameOverReason | null>(null);
 
-    async function InitPixiApp(): Promise<pixi.Application | null> {
+    async function InitPixiApp(sessionToken: number): Promise<pixi.Application | null> {
         if (!containerRef.current) return null;
 
         const gameApp = new pixi.Application();
@@ -94,12 +94,22 @@ export default function BattleScene() {
             antialias: true,
         });
 
+        // Prevent memory leaks and duplicate app initializations if the session was cancelled
+        if (cancelledRef.current || gameSessionRef.current !== sessionToken) {
+            gameApp.destroy(true);
+            uiApp.destroy(true);
+            return null;
+        }
+
         gameApp.canvas.style.position = "absolute";
         gameApp.canvas.style.zIndex = "1";
 
         uiApp.canvas.style.position = 'absolute';
         uiApp.canvas.style.zIndex = "100";
         uiApp.canvas.style.pointerEvents = "none";
+
+        // Clean up any existing canvases from prior aborted initialization cycles
+        containerRef.current.innerHTML = "";
 
         containerRef.current.appendChild(gameApp.canvas as HTMLCanvasElement);
         containerRef.current.appendChild(uiApp.canvas as HTMLCanvasElement);
@@ -213,9 +223,9 @@ export default function BattleScene() {
         return turns;
     }
 
-    async function playGame(computedTurns: ComputedTurn[], board: ChessBoard, cancelled: boolean): Promise<void> {
+    async function playGame(computedTurns: ComputedTurn[], board: ChessBoard, isCancelled: () => boolean): Promise<void> {
         for (const turn of computedTurns) {
-            if (cancelled) break;
+            if (isCancelled()) break;
 
             for (const move of turn.moves) {
                 const fromCell = board.getCellById(move.from);
@@ -230,12 +240,16 @@ export default function BattleScene() {
                     }
                 }
 
+                if (isCancelled()) break;
+
                 await board.movePiece(fromCell, toCell, ANIMATION_DURATION);
 
                 if (move.promotionPieceId) {
                     await board.promotePieceAtCell(toCell, move.promotionPieceId);
                 }
             }
+
+            if (isCancelled()) break;
 
             setLastMove(turn.san);
             setFen(turn.fen);
@@ -272,92 +286,142 @@ export default function BattleScene() {
         return promise;
     }
 
-    function resetGame() {
+    async function startGameSession(app: pixi.Application, sessionToken: number) {
+        const isSessionCancelled = () => {
+            return cancelledRef.current || gameSessionRef.current !== sessionToken;
+        };
 
-    }
+        // 1. Reset logic state
+        chessRef.current = new Chess();
+        setFen(chessRef.current.fen());
+        setLastMove(null);
+        setGameOverReason(null);
+        setIsOpeningAnimCompleted(false);
+        winnerRef.current = null;
+        lootRef.current = null;
 
-    function resetPixi() {
-    }
+        // 2. Clear Pixi app stages to clean up the board and any loot sprites on UI
+        gameAppRef.current?.stage.removeChildren();
+        uiAppRef.current?.stage.removeChildren();
 
-    useEffect(() => {
-        if (isInitialized.current) return;
-        isInitialized.current = true;
-        cancelledRef.current = false;
-        confetti.Promise = Promise;
+        // 3. Build a new ChessBoard and sync the pieces
+        const w = containerRef.current!.clientWidth;
+        const h = containerRef.current!.clientHeight;
 
-        (async () => {
-            const app = await InitPixiApp();
-            if (app === null) return;
+        const boardSettings: BoardSettings = {
+            hexWhiteColor: 0xebecd0,
+            hexBlackColor: 0x739552,
+            cellSize: w < h ? w / 8 : h / 8,
+            piecesFolderUrl: piecesFolderUrl,
+            whiteDown: true
+        };
 
-            const w = containerRef.current!.clientWidth;
-            const h = containerRef.current!.clientHeight;
+        const board = new ChessBoard(app, boardSettings);
+        boardRef.current = board;
 
-            const boardSettings: BoardSettings = {
-                hexWhiteColor: 0xebecd0,
-                hexBlackColor: 0x739552,
-                cellSize: w < h ? w / 8 : h / 8,
-                piecesFolderUrl: piecesFolderUrl,
-                whiteDown: true
-            }
+        await SyncBoardPieces(board, boardSettings.piecesFolderUrl, chessStateToBoardMap(chessRef.current));
 
-            const board = new ChessBoard(app, boardSettings);
-            boardRef.current = board;
-            await SyncBoardPieces(board, boardSettings.piecesFolderUrl, chessStateToBoardMap(chessRef.current));
+        if (isSessionCancelled()) return;
 
-            app.stage.addChild(board.globalContainer);
+        app.stage.addChild(board.globalContainer);
 
-            const openingAnim: IBoardAnimation = new BoardOpeningAnimation();
-            openingAnimRef.current = openingAnim;
+        // 4. Set up Opening Animation
+        const openingAnim: IBoardAnimation = new BoardOpeningAnimation();
+        openingAnimRef.current = openingAnim;
 
-            const openingAnimationCompleted = new Promise<void>((resolve) => {
-                openingAnim.play(board, {
-                    onComplete: () => {
+        const openingAnimationCompleted = new Promise<void>((resolve) => {
+            openingAnim.play(board, {
+                onComplete: () => {
+                    if (!isSessionCancelled()) {
                         setIsOpeningAnimCompleted(true);
-                        resolve();
                     }
-                });
+                    resolve();
+                }
             });
+        });
 
+        // 5. Ensure ChessEngine is initialized
+        if (!engineRef.current) {
             const engine = new ChessEngine();
             engineRef.current = engine;
             const playerWorkerOptions: WorkerOptions = {
                 depth: randomIntFromRange(defaultOpponentStrength.depth),
                 skillLevel: randomIntFromRange(defaultPlayerStrength.skillLevel)
-            }
+            };
             const opponentWorkerOptions: WorkerOptions = {
                 depth: randomIntFromRange(defaultOpponentStrength.depth),
                 skillLevel: randomIntFromRange(defaultOpponentStrength.skillLevel)
-            }
+            };
             await engine.init(playerWorkerOptions, opponentWorkerOptions);
+        }
 
-            setThinking(true);
-            cancelledRef.current = false;
+        if (isSessionCancelled()) return;
 
-            const computedTurns = await computeWholeGame(engine, chessRef.current, () => cancelledRef.current, defaultPlayerStrength, defaultOpponentStrength);
+        // 6. Compute Chess moves
+        setThinking(true);
+        const computedTurns = await computeWholeGame(
+            engineRef.current,
+            chessRef.current,
+            isSessionCancelled,
+            defaultPlayerStrength,
+            defaultOpponentStrength
+        );
 
-            setThinking(false);
+        if (isSessionCancelled()) return;
+        setThinking(false);
 
-            await openingAnimationCompleted;
-            if (cancelledRef.current) return;
+        // 7. Wait for opening animation to complete before starting moves
+        await openingAnimationCompleted;
+        if (isSessionCancelled()) return;
 
-            await playGame(computedTurns, board, cancelledRef.current);
+        // 8. Play out the moves on the board
+        await playGame(computedTurns, board, isSessionCancelled);
+        if (isSessionCancelled()) return;
 
-            setThinking(false);
-            const gameOverReason = getGameOverReason(chessRef.current);
-            if (gameOverReason) {
-                lootRef.current = roll(gameOverReason);
-                console.log("Loot:", lootRef.current);
-            }
-            await wait(500);
+        // 9. Process Game Over
+        setThinking(false);
+        const gameOver = getGameOverReason(chessRef.current);
+        if (gameOver) {
+            lootRef.current = roll(gameOver);
+            console.log("Loot:", lootRef.current);
+        }
 
-            setGameOverReason(gameOverReason);
+        if (isSessionCancelled()) return;
 
-            if (winnerRef.current === "player") {
-                await playConfetti();
-            }
+        await wait(500);
+        if (isSessionCancelled()) return;
+
+        setGameOverReason(gameOver);
+
+        if (winnerRef.current === "player" && !isSessionCancelled()) {
+            await playConfetti();
+        }
+    }
+
+    function resetGame() {
+        gameSessionRef.current += 1;
+        const app = gameAppRef.current;
+        if (app) {
+            startGameSession(app, gameSessionRef.current);
+        }
+    }
+
+    useEffect(() => {
+        cancelledRef.current = false;
+        confetti.Promise = Promise;
+
+        (async () => {
+            gameSessionRef.current += 1;
+            const currentSession = gameSessionRef.current;
+
+            const app = await InitPixiApp(currentSession);
+            if (app === null) return;
+
+            await startGameSession(app, currentSession);
         })();
 
         return () => {
+            console.log("unmount");
             cancelledRef.current = true;
             openingAnimRef.current?.kill();
             openingAnimRef.current = null;
@@ -404,6 +468,7 @@ export default function BattleScene() {
                 loot={lootRef.current}
                 piecesFolderUrl={piecesFolderUrl}
                 uiApp={uiAppRef.current}
+                onNewBattle={resetGame}
             />}
         </>
 
