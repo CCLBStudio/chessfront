@@ -11,7 +11,7 @@ import { ChessEngine, WorkerOptions, GameOverReason } from '../services/chessEng
 import { IBoardAnimation } from '../pixi/IBoardAnimation';
 import WaitingMessage from './WaitingMessage';
 import { roll, Loot } from '../services/loot';
-import GameOverMessage from './GameOverMessage';
+import GameOverMessage from './GameOverScreen';
 import confetti from 'canvas-confetti';
 import { wait } from '@/utils/wait';
 
@@ -60,8 +60,8 @@ function randomIntFromRange([a, b]: [number, number]): number {
 export default function BattleScene() {
     const containerRef = useRef<HTMLDivElement>(null);
     const isInitialized = useRef(false);
-  const gameAppRef = useRef<pixi.Application | null>(null);
-  const uiAppRef = useRef<pixi.Application | null>(null);
+    const gameAppRef = useRef<pixi.Application | null>(null);
+    const uiAppRef = useRef<pixi.Application | null>(null);
     const boardRef = useRef<ChessBoard | null>(null);
     const openingAnimRef = useRef<IBoardAnimation | null>(null);
     const [isOpeningAnimCompleted, setIsOpeningAnimCompleted] = useState(false);
@@ -77,36 +77,37 @@ export default function BattleScene() {
     const [gameOverReason, setGameOverReason] = useState<GameOverReason | null>(null);
 
     async function InitPixiApp(): Promise<pixi.Application | null> {
-      if (!containerRef.current) return null;
+        if (!containerRef.current) return null;
 
-      const gameApp = new pixi.Application();
-      const uiApp = new pixi.Application();
+        const gameApp = new pixi.Application();
+        const uiApp = new pixi.Application();
 
-      await gameApp.init({
-          resizeTo: containerRef.current,
-          backgroundAlpha: 0,
-          antialias: false,
-      });
+        await gameApp.init({
+            resizeTo: containerRef.current,
+            backgroundAlpha: 0,
+            antialias: false,
+        });
 
-      await uiApp.init({
-          resizeTo: containerRef.current,
-          backgroundAlpha: 0,
-          antialias: true,
-      });
+        await uiApp.init({
+            resizeTo: containerRef.current,
+            backgroundAlpha: 0,
+            antialias: true,
+        });
 
-      gameApp.canvas.style.position = "absolute";
-      gameApp.canvas.style.zIndex = "1";
+        gameApp.canvas.style.position = "absolute";
+        gameApp.canvas.style.zIndex = "1";
 
-      uiApp.canvas.style.position = 'absolute';
-      uiApp.canvas.style.zIndex = "200";
+        uiApp.canvas.style.position = 'absolute';
+        uiApp.canvas.style.zIndex = "100";
+        uiApp.canvas.style.pointerEvents = "none";
 
-      containerRef.current.appendChild(gameApp.canvas as HTMLCanvasElement);
-      containerRef.current.appendChild(uiApp.canvas as HTMLCanvasElement);
+        containerRef.current.appendChild(gameApp.canvas as HTMLCanvasElement);
+        containerRef.current.appendChild(uiApp.canvas as HTMLCanvasElement);
 
-      gameAppRef.current = gameApp;
-      uiAppRef.current = uiApp;
+        gameAppRef.current = gameApp;
+        uiAppRef.current = uiApp;
 
-      return gameApp;
+        return gameApp;
     }
 
     function getGameOverReason(chess: Chess): GameOverReason | null {
@@ -205,7 +206,7 @@ export default function BattleScene() {
             i++;
         }
 
-        if(chess.isCheckmate()){
+        if (chess.isCheckmate()) {
             winnerRef.current = chess.turn() === "w" ? "opponent" : "player";
         }
 
@@ -239,38 +240,44 @@ export default function BattleScene() {
             setLastMove(turn.san);
             setFen(turn.fen);
         }
+    }
+
+    async function playConfetti(): Promise<void> {
+        let promise: Promise<void> = Promise.resolve();
+        const confettiSettings = [
+            {
+                origin: { x: 0.25, y: .6 },
+                particleCount: 150,
+                spread: 100,
+                ticks: 200,
+            },
+            {
+                origin: { x: 0.75, y: .6 },
+                particleCount: 150,
+                spread: 100,
+                ticks: 200,
+            },
+            {
+                origin: { x: 0.5, y: 0.35 },
+                particleCount: 150,
+                spread: 100,
+                ticks: 200,
+            },
+        ]
+        for (let i = 0; i < confettiSettings.length; i++) {
+            promise = confetti(confettiSettings[i]);
+            await wait(100);
+        }
+
+        return promise;
+    }
+
+    function resetGame() {
 
     }
 
-  async function playConfetti(): Promise<void> {
-    let promise: Promise<void> = Promise.resolve();
-    const confettiSettings = [
-      {
-        origin: { x: 0.25, y: .6 },
-        particleCount: 150,
-        spread: 100,
-        ticks: 200,
-      },
-      {
-        origin: { x: 0.75, y: .6 },
-        particleCount: 150,
-        spread: 100,
-        ticks: 200,
-      },
-      {
-        origin: { x: 0.5, y: 0.35 },
-        particleCount: 150,
-        spread: 100,
-        ticks: 200,
-      },
-    ]
-    for (let i = 0; i < confettiSettings.length ; i++) {
-      promise = confetti(confettiSettings[i]);
-      await wait(100);
+    function resetPixi() {
     }
-
-    return promise;
-  }
 
     useEffect(() => {
         if (isInitialized.current) return;
@@ -313,11 +320,11 @@ export default function BattleScene() {
 
             const engine = new ChessEngine();
             engineRef.current = engine;
-            const playerWorkerOptions : WorkerOptions = {
+            const playerWorkerOptions: WorkerOptions = {
                 depth: randomIntFromRange(defaultOpponentStrength.depth),
                 skillLevel: randomIntFromRange(defaultPlayerStrength.skillLevel)
             }
-            const opponentWorkerOptions : WorkerOptions = {
+            const opponentWorkerOptions: WorkerOptions = {
                 depth: randomIntFromRange(defaultOpponentStrength.depth),
                 skillLevel: randomIntFromRange(defaultOpponentStrength.skillLevel)
             }
@@ -345,7 +352,7 @@ export default function BattleScene() {
 
             setGameOverReason(gameOverReason);
 
-            if(winnerRef.current === "player") {
+            if (winnerRef.current === "player") {
                 await playConfetti();
             }
         })();
@@ -391,13 +398,13 @@ export default function BattleScene() {
                     style={{ width: '100%', height: '100vh', position: 'relative' }}
                 />
             </div>
-        {gameOverReason && <GameOverMessage
-          gameOverReason={gameOverReason}
-          playerWon={winnerRef.current === 'player'}
-          loot={lootRef.current}
-          piecesFolderUrl={piecesFolderUrl}
-          uiApp={uiAppRef.current}
-        />}
+            {gameOverReason && <GameOverMessage
+                gameOverReason={gameOverReason}
+                playerWon={winnerRef.current === 'player'}
+                loot={lootRef.current}
+                piecesFolderUrl={piecesFolderUrl}
+                uiApp={uiAppRef.current}
+            />}
         </>
 
     );
