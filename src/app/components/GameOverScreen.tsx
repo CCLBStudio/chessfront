@@ -2,7 +2,7 @@
 
 import { GameOverReason } from "../services/chessEngine";
 import { Loot } from "../services/loot";
-import style from "../styles/gameOverMessageStyle.module.css";
+import style from "../styles/gameOverScreenStyle.module.css";
 import * as pixi from 'pixi.js';
 import { useEffect, useState } from "react";
 import { revealLoot } from "../pixi/PieceRevealAnimation";

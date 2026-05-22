@@ -257,33 +257,25 @@ export default function BattleScene() {
     }
 
     async function playConfetti(): Promise<void> {
-        let promise: Promise<void> = Promise.resolve();
         const confettiSettings = [
-            {
-                origin: { x: 0.25, y: .6 },
-                particleCount: 150,
-                spread: 100,
-                ticks: 200,
-            },
-            {
-                origin: { x: 0.75, y: .6 },
-                particleCount: 150,
-                spread: 100,
-                ticks: 200,
-            },
-            {
-                origin: { x: 0.5, y: 0.35 },
-                particleCount: 150,
-                spread: 100,
-                ticks: 200,
-            },
-        ]
+            { origin: { x: 0.25, y: 0.6 }, particleCount: 150, spread: 100, ticks: 200 },
+            { origin: { x: 0.75, y: 0.6 }, particleCount: 150, spread: 100, ticks: 200 },
+            { origin: { x: 0.5, y: 0.35 }, particleCount: 150, spread: 100, ticks: 200 },
+        ];
+
+        let promise: Promise<unknown> | null = null;
         for (let i = 0; i < confettiSettings.length; i++) {
-            promise = confetti(confettiSettings[i]);
+            const p = confetti(confettiSettings[i]);
+            if (p) {
+                promise = p;
+            }
+
             await wait(100);
         }
 
-        return promise;
+        if (promise) {
+            await promise;
+        }
     }
 
     async function startGameSession(app: pixi.Application, sessionToken: number) {
@@ -391,11 +383,11 @@ export default function BattleScene() {
         await wait(500);
         if (isSessionCancelled()) return;
 
-        setGameOverReason(gameOver);
-
         if (winnerRef.current === "player" && !isSessionCancelled()) {
             await playConfetti();
         }
+        setGameOverReason(gameOver);
+
     }
 
     function resetGame() {
@@ -408,7 +400,6 @@ export default function BattleScene() {
 
     useEffect(() => {
         cancelledRef.current = false;
-        confetti.Promise = Promise;
 
         (async () => {
             gameSessionRef.current += 1;
@@ -421,7 +412,6 @@ export default function BattleScene() {
         })();
 
         return () => {
-            console.log("unmount");
             cancelledRef.current = true;
             openingAnimRef.current?.kill();
             openingAnimRef.current = null;

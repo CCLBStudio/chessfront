@@ -6,7 +6,8 @@ async function loadShader(path: string) {
     return response.text();
 }
 
-export async function revealLoot(sprite: pixi.Sprite): Promise<void>{
+export async function revealLoot(sprite: pixi.Sprite): Promise<void> {
+    sprite.visible = false;
     const noiseTexture = await pixi.Assets.load("noise/perlin23.png");
     const vertex = await loadShader("/shaders/dissolve.vert.glsl");
     const fragment = await loadShader("/shaders/dissolve.frag.glsl");
@@ -24,16 +25,16 @@ export async function revealLoot(sprite: pixi.Sprite): Promise<void>{
             uNoise: noiseTexture.source,
         },
     });
-  
+
     sprite.filters = [dissolve];
+    sprite.visible = true;
 
     await new Promise((resolve) => {
         gsap.to(dissolve.resources.dissolveUniforms.uniforms, {
-            delay: 0.5,
             progress: 0,
-            duration: 3,
+            duration: 2.5,
             ease: "power4.in",
             onComplete: resolve
-          });
+        });
     });
 }
