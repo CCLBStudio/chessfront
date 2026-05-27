@@ -14,6 +14,9 @@ import { roll, Loot } from '../services/loot';
 import GameOverMessage from './GameOverScreen';
 import confetti from 'canvas-confetti';
 import { wait } from '@/utils/wait';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../store';
+import { addLootToCollection } from '../../store/slices/playerArmy';
 
 
 const ANIMATION_DURATION = 0.1;
@@ -57,14 +60,27 @@ function randomIntFromRange([a, b]: [number, number]): number {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-export default function BattleScene() {
+export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void }) {
+    const dispatch = useDispatch();
+    const savedFen = useSelector((state: RootState) => state.playerArmy.fen);
+
     const containerRef = useRef<HTMLDivElement>(null);
     const gameAppRef = useRef<pixi.Application | null>(null);
     const uiAppRef = useRef<pixi.Application | null>(null);
     const boardRef = useRef<ChessBoard | null>(null);
     const openingAnimRef = useRef<IBoardAnimation | null>(null);
     const [isOpeningAnimCompleted, setIsOpeningAnimCompleted] = useState(false);
-    const chessRef = useRef(new Chess());
+
+    const chessRef = useRef<Chess>(null!);
+    if (!chessRef.current) {
+        try {
+            chessRef.current = new Chess(savedFen || undefined);
+        } catch (e) {
+            console.error("Invalid saved FEN, falling back to standard chess starting FEN.", e);
+            chessRef.current = new Chess();
+        }
+    }
+
     const engineRef = useRef<ChessEngine | null>(null);
     const cancelledRef = useRef(false);
     const gameSessionRef = useRef<number>(0);
@@ -284,7 +300,12 @@ export default function BattleScene() {
         };
 
         // 1. Reset logic state
-        chessRef.current = new Chess();
+        try {
+            chessRef.current = new Chess(savedFen || undefined);
+        } catch (e) {
+            console.error("Invalid saved FEN, falling back to standard chess starting FEN.", e);
+            chessRef.current = new Chess();
+        }
         setFen(chessRef.current.fen());
         setLastMove(null);
         setGameOverReason(null);
@@ -374,8 +395,10 @@ export default function BattleScene() {
         setThinking(false);
         const gameOver = getGameOverReason(chessRef.current);
         if (gameOver) {
-            lootRef.current = roll(gameOver);
-            console.log("Loot:", lootRef.current);
+            const rolledLoot = roll(gameOver);
+            lootRef.current = rolledLoot;
+            console.log("Loot:", rolledLoot);
+            dispatch(addLootToCollection(rolledLoot));
         }
 
         if (isSessionCancelled()) return;
@@ -428,7 +451,7 @@ export default function BattleScene() {
     return (
         <>
             {(thinking && isOpeningAnimCompleted) && <WaitingMessage />}
-            <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
+            <div style={{ width: '100%', height: '90vh', position: 'relative' }}>
                 <div
                     style={{
                         position: 'absolute',
@@ -449,7 +472,7 @@ export default function BattleScene() {
                 </div>
                 <div
                     ref={containerRef}
-                    style={{ width: '100%', height: '100vh', position: 'relative' }}
+                    style={{ width: '100%', height: '100%', position: 'relative', justifySelf: 'center' }}
                 />
             </div>
             {gameOverReason && <GameOverMessage
@@ -459,6 +482,7 @@ export default function BattleScene() {
                 piecesFolderUrl={piecesFolderUrl}
                 uiApp={uiAppRef.current}
                 onNewBattle={resetGame}
+                onEditArmy={onEditArmy}
             />}
         </>
 

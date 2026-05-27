@@ -20,6 +20,7 @@ export class ChessBoard {
     public globalContainer: pixi.Container;
     public cellsContainer: pixi.Container;
     public piecesContainer: pixi.Container;
+    public border: pixi.Graphics;
     public cells: BoardCell[];
     public idToCell: Record<string, BoardCell>;
     public pieces: ChessPiece[];
@@ -57,7 +58,7 @@ export class ChessBoard {
                 const cell = new BoardCell(cols[i] + rows[j], settings, (i + j) % 2 === 0 ? "white" : "black");
                 this.cellsContainer.addChild(cell.container);
 
-                cell.setPosition(i * settings.cellSize + settings.cellSize / 2, j * settings.cellSize + settings.cellSize / 2);
+                cell.setPosition(i * cell.size + cell.size / 2, j * cell.size + cell.size / 2);
                 this.cells.push(cell);
                 this.idToCell[cell.id] = cell;
             }
@@ -75,6 +76,18 @@ export class ChessBoard {
         this.globalContainer.pivot.set(this.globalContainer.width / 2, this.globalContainer.height / 2);
         this.globalContainer.position.set(app.screen.width / 2, app.screen.height / 2);
         this.cellsContainer.position.set(this.cellsContainer.width / 2, this.cellsContainer.height / 2);
+
+        const border = new pixi.Graphics()
+            .roundRect(-4, -3, this.cellsContainer.width + 8, this.cellsContainer.height + 6, 2)
+            .stroke({
+                width: 4,
+                color: 0x664228,
+                alignment: 1,
+                join: 'miter',
+            });
+        border.alpha = 0;
+        this.border = border;
+        this.globalContainer.addChild(border);
     }
 
     public clearPieces() {

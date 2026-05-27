@@ -37,6 +37,8 @@ export class BoardOpeningAnimation implements IBoardAnimation {
                 ease: "back.out(1.5)"
             }, "-=0.3");
         }
+
+        tl.to(board.border, { alpha: 1, duration: 0.2, ease: "power2.out" });
     }
 
     kill(): void {
