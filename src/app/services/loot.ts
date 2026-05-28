@@ -64,13 +64,13 @@ function getRandomLoot(probabilities: Record<Loot, number>): Loot {
     return loots[0];
 }
 
-export function roll(gameOverReason: GameOverReason): Loot {
+export function roll(gameOverReason: GameOverReason, playerWon: boolean): Loot {
     let probabilities: Record<string, number>;
 
     switch (gameOverReason) {
         case "CHECKMATE":
             // Assured epic or legendary loot
-            probabilities = PROBABILITIES.HIGH_TIER;
+            probabilities = playerWon ? PROBABILITIES.HIGH_TIER : PROBABILITIES.BASIC;
             break;
 
         case "STALEMATE":

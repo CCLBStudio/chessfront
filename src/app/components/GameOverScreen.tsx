@@ -9,7 +9,7 @@ import { revealLoot } from "../pixi/PieceRevealAnimation";
 
 interface GameOverScreenProps {
   gameOverReason: GameOverReason;
-  playerWon: boolean;
+  winner: 'p' | 'o' | null;
   loot: Loot | null;
   piecesFolderUrl: string;
   uiApp: pixi.Application | null;
@@ -41,8 +41,12 @@ async function displayLootSprite(loot: Loot, piecesFolderUrl: string, uiApp: pix
 }
 
 export default function GameOverMessage(props: GameOverScreenProps) {
-  const message = GAME_OVER_MESSAGES[props.gameOverReason] || "Game Over";
-  const lootMessage = props.loot ? `You have a new piece:` : "Nothing obtained this time.";
+  let title: string = "";
+  if (props.winner !== null) {
+    title = props.winner === "p" ? " You won!" : " You lost...";
+  }
+  const message = (GAME_OVER_MESSAGES[props.gameOverReason] || "Game Over") + title;
+  const lootMessage = props.loot ? `You have obtained:` : "Nothing obtained this time.";
   const [showButtons, setShowButtons] = useState(false);
 
   useEffect(() => {

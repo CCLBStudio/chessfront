@@ -84,7 +84,7 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
     const engineRef = useRef<ChessEngine | null>(null);
     const cancelledRef = useRef(false);
     const gameSessionRef = useRef<number>(0);
-    const winnerRef = useRef<string | null>(null);
+    const winnerRef = useRef<'p' | 'o' | null>(null);
     const lootRef = useRef<Loot | null>(null);
 
     const [fen, setFen] = useState(chessRef.current.fen());
@@ -233,7 +233,7 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
         }
 
         if (chess.isCheckmate()) {
-            winnerRef.current = chess.turn() === "w" ? "opponent" : "player";
+            winnerRef.current = chess.turn() === "w" ? "o" : "p";
         }
 
         return turns;
@@ -395,7 +395,7 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
         setThinking(false);
         const gameOver = getGameOverReason(chessRef.current);
         if (gameOver) {
-            const rolledLoot = roll(gameOver);
+            const rolledLoot = roll(gameOver, winnerRef.current === 'p');
             lootRef.current = rolledLoot;
             console.log("Loot:", rolledLoot);
             dispatch(addLootToCollection(rolledLoot));
@@ -406,7 +406,7 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
         await wait(500);
         if (isSessionCancelled()) return;
 
-        if (winnerRef.current === "player" && !isSessionCancelled()) {
+        if (winnerRef.current === "p" && !isSessionCancelled()) {
             await playConfetti();
         }
         setGameOverReason(gameOver);
@@ -451,7 +451,7 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
     return (
         <>
             {(thinking && isOpeningAnimCompleted) && <WaitingMessage />}
-            <div style={{ width: '100%', height: '90vh', position: 'relative' }}>
+            <div style={{ width: '100%', height: 'calc(100vh - 55px)', position: 'relative' }}>
                 <div
                     style={{
                         position: 'absolute',
@@ -477,7 +477,7 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
             </div>
             {gameOverReason && <GameOverMessage
                 gameOverReason={gameOverReason}
-                playerWon={winnerRef.current === 'player'}
+                playerWon={winnerRef.current === 'p'}
                 loot={lootRef.current}
                 piecesFolderUrl={piecesFolderUrl}
                 uiApp={uiAppRef.current}

@@ -1,23 +1,23 @@
 /* Fixed Header Navbar */
 .navHeader {
     width: 100%;
-    height: 50px;
+    height: 55px;
     background: rgba(18, 18, 18, 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
     z-index: 1000;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0 40px;
-    box-sizing: border-box;
+
 }
 
 .navLogo {
     font-size: 1.4rem;
     font-weight: 700;
     letter-spacing: 2px;
+    margin-top: 2px;
     background: linear-gradient(45deg, #ebecd0, #739552);
     font-family: var(--font-trajan), 'Inter', sans-serif;
     -webkit-background-clip: text;
@@ -28,7 +28,7 @@
 .navTabs {
     display: flex;
     gap: 30px;
-    border: 1px solid red;
+    /* border: 1px solid red; */
 }
 
 .navTab {
@@ -39,7 +39,7 @@
     background: none;
     border: none;
     cursor: pointer;
-    padding: 8px 16px;
+    padding: 6px 16px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 6px;
     font-family: var(--font-trajan), sans-serif;

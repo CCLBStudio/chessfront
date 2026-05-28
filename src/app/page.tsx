@@ -9,7 +9,7 @@ export default function Home() {
   const [view, setView] = useState<"battle" | "army">("battle");
 
   return (
-    <div style={{ minHeight: "100vh", background: "#121212", display: 'flex', flexDirection: 'column', justifyContent: 'space-around' }}>
+    <div style={{ minHeight: "100vh", background: "#121212", display: 'flex', flexDirection: 'column' }}>
       <Header
         onBattleClick={() => setView("battle")}
         onArmyClick={() => setView("army")}
