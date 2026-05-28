@@ -16,12 +16,12 @@ export type Army = {
 }
 
 const initialState: Army = {
-    fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    fen: "rnbqkbnr/pppppppp/8/8/8/8/3PPP2/4K3 w kq - 0 1",
     piecesTextureFolderUrl: "assets/pieces/default/",
     collection: {
-        pawn: 2,
-        knight: 1,
-        bishop: 1,
+        pawn: 0,
+        knight: 0,
+        bishop: 0,
         rook: 0,
         queen: 0,
     }

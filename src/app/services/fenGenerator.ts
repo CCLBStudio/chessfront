@@ -67,8 +67,8 @@ function randomInt(min: number, max: number) {
 }
 
 function generateBlackArmy(target: number, tolerance: [number, number]) {
-    const min = target * (1 - tolerance[0]);
-    const max = target * (1 + tolerance[1]);
+    const min = Math.max(8, Math.ceil(target * (1 - tolerance[0])));
+    const max = Math.max(8, Math.ceil(target * (1 + tolerance[1])));
     const maxSlots = 16;
 
     const pieces: Piece[] = ['p', 'n', 'b', 'r', 'q'];
@@ -102,7 +102,9 @@ function generateBlackArmy(target: number, tolerance: [number, number]) {
 
     const sorted: Piece[] = ['q', 'r', 'b', 'n', 'p'];
 
+    console.log("entering fallback");
     while (result.length < maxSlots && weight < max) {
+        console.log(`result length: ${result.length}, maxSlots: ${maxSlots}, weight: ${weight}, max: ${max}`);
         for (const p of sorted) {
             if (result.length >= maxSlots) break;
             const w = PIECE_WEIGHTS[p];
@@ -113,6 +115,8 @@ function generateBlackArmy(target: number, tolerance: [number, number]) {
             }
         }
     }
+
+    console.log("exiting fallback");
 
     return result;
 }

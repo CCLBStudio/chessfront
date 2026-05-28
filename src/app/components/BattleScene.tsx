@@ -18,14 +18,15 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { addLootToCollection } from '../../store/slices/playerArmy';
 import { generateRandomBalancedFen } from '../services/fenGenerator';
+import { withTimeout } from '../services/promiseX';
 
 
 const ANIMATION_DURATION = 0.1;
 const piecesFolderUrl = "/assets/pieces/default/";
 
 const defaultPlayerStrength: TeamStrength = {
-    depth: [10, 12],
-    skillLevel: [17, 19]
+    depth: [11, 13],
+    skillLevel: [19, 20]
 };
 const defaultOpponentStrength: TeamStrength = {
     depth: [8, 10],
@@ -63,8 +64,10 @@ function randomIntFromRange([a, b]: [number, number]): number {
 
 function newChess(fen: string): Chess {
     try {
+        console.log("received fen : ", fen);
         const newFen = generateRandomBalancedFen(fen);
-        return new Chess(newFen, { skipValidation: false, });
+        console.log("balanced generated fen:", newFen);
+        return new Chess(newFen, { skipValidation: true, });
     } catch (e) {
         console.error("Invalid saved FEN, falling back to standard chess starting FEN.", e);
         return new Chess();
@@ -85,6 +88,7 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
     const chessRef = useRef<Chess>(null!);
     if (!chessRef.current) {
         chessRef.current = newChess(savedFen);
+        //chessRef.current = newChess(debugFen);
     }
 
     const engineRef = useRef<ChessEngine | null>(null);
@@ -93,8 +97,6 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
     const winnerRef = useRef<'p' | 'o' | null>(null);
     const lootRef = useRef<Loot | null>(null);
 
-    const [fen, setFen] = useState(chessRef.current.fen());
-    const [lastMove, setLastMove] = useState<string | null>(null);
     const [thinking, setThinking] = useState(false);
     const [gameOverReason, setGameOverReason] = useState<GameOverReason | null>(null);
 
@@ -187,7 +189,7 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
             const currentTurn = chess.turn();
             const teamStrength = currentTurn === "w" ? playerTeamStrength : opponentTeamStrength;
 
-            let bestMoveUci = await engine.getBestMove(chess.fen(), currentTurn === "w", { depth: randomIntFromRange(teamStrength.depth) });
+            let bestMoveUci = await withTimeout(engine.getBestMove(chess.fen(), currentTurn === "w", { depth: randomIntFromRange(teamStrength.depth) }), 1500);
 
             if (!bestMoveUci || bestMoveUci === "(none)" || bestMoveUci.length < 4) {
                 console.log("No best move found", bestMoveUci);
@@ -283,8 +285,8 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
 
             if (isCancelled()) break;
 
-            setLastMove(turn.san);
-            setFen(turn.fen);
+            //setLastMove(turn.san);
+            //setFen(turn.fen);
         }
     }
 
@@ -317,8 +319,7 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
 
         // 1. Reset logic state
         chessRef.current = newChess(savedFen);
-        setFen(chessRef.current.fen());
-        setLastMove(null);
+        //chessRef.current = newChess(debugFen);
         setGameOverReason(null);
         setIsOpeningAnimCompleted(false);
         winnerRef.current = null;
@@ -462,24 +463,6 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
         <>
             {(thinking && isOpeningAnimCompleted) && <WaitingMessage />}
             <div style={{ width: '100%', height: 'calc(100vh - 55px)', position: 'relative' }}>
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: 12,
-                        left: 12,
-                        zIndex: 10,
-                        background: 'rgba(18,18,18,0.75)',
-                        color: '#fff',
-                        padding: '8px 10px',
-                        borderRadius: 8,
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                    }}
-                >
-                    <div>Status: {thinking ? 'Engine thinking' : gameOverReason ?? 'Running'}</div>
-                    <div>Last move: {lastMove ?? '-'}</div>
-                    <div>FEN: {fen}</div>
-                </div>
                 <div
                     ref={containerRef}
                     style={{ width: '100%', height: '100%', position: 'relative', justifySelf: 'center' }}

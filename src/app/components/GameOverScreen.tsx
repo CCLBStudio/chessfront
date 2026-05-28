@@ -18,11 +18,11 @@ interface GameOverScreenProps {
 }
 
 const GAME_OVER_MESSAGES: Record<GameOverReason, string> = {
-  CHECKMATE: "Checkmate!",
-  STALEMATE: "Stalemate",
-  INSUFFICIENT_MATERIAL: "Insufficient Material",
-  THREEFOLD_REPETITION: "Threefold Repetition",
-  DRAW: "Draw",
+  CHECKMATE: "Échec et mat!",
+  STALEMATE: "Pat",
+  INSUFFICIENT_MATERIAL: "Matériel insuffisant",
+  THREEFOLD_REPETITION: "Répétition triple",
+  DRAW: "Nulle",
   UNKNOWN: "Game Over",
 };
 
@@ -43,10 +43,10 @@ async function displayLootSprite(loot: Loot, piecesFolderUrl: string, uiApp: pix
 export default function GameOverMessage(props: GameOverScreenProps) {
   let title: string = "";
   if (props.winner !== null) {
-    title = props.winner === "p" ? " You won!" : " You lost...";
+    title = props.winner === "p" ? " Victoire !" : " Défaite...";
   }
   const message = (GAME_OVER_MESSAGES[props.gameOverReason] || "Game Over") + title;
-  const lootMessage = props.loot ? `You have obtained:` : "Nothing obtained this time.";
+  const lootMessage = props.loot ? `Vous avez gagné :` : "Vous n'avez rien gagné.";
   const [showButtons, setShowButtons] = useState(false);
 
   useEffect(() => {
@@ -80,10 +80,10 @@ export default function GameOverMessage(props: GameOverScreenProps) {
       {showButtons && (
         <div className={style.buttonsContainer}>
           <button className={style.button} onClick={props.onNewBattle}>
-            New Battle
+            Au combat
           </button>
           <button className={style.button} onClick={props.onEditArmy}>
-            Edit Army
+            Éditer l'armée
           </button>
         </div>
       )}
