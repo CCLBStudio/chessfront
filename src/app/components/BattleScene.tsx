@@ -477,7 +477,7 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
             </div>
             {gameOverReason && <GameOverMessage
                 gameOverReason={gameOverReason}
-                playerWon={winnerRef.current === 'p'}
+                winner={winnerRef.current}
                 loot={lootRef.current}
                 piecesFolderUrl={piecesFolderUrl}
                 uiApp={uiAppRef.current}

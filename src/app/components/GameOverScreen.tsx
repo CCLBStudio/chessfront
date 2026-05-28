@@ -43,6 +43,7 @@ async function displayLootSprite(loot: Loot, piecesFolderUrl: string, uiApp: pix
 export default function GameOverMessage(props: GameOverScreenProps) {
   let title: string = "";
   if (props.winner !== null) {
+    console.log(props.winner);
     title = props.winner === "p" ? " You won!" : " You lost...";
   }
   const message = (GAME_OVER_MESSAGES[props.gameOverReason] || "Game Over") + title;

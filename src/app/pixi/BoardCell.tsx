@@ -15,7 +15,6 @@ export class BoardCell {
         this.color = color;
         this.container = new pixi.Container();
 
-        console.log(settings.cellSize)
         this._cellRect = new pixi.Graphics().rect(0, 0, this.size, this.size)
             .fill({ color: this.color === "white" ? settings.hexWhiteColor : settings.hexBlackColor });
 
