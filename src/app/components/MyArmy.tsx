@@ -226,6 +226,10 @@ export default function MyArmy({ onBackToBattle }: MyArmyProps) {
         try {
             const data = JSON.parse(e.dataTransfer.getData("text/plain"));
             const { source, pieceType, fromSquare } = data;
+            if (targetSquare.includes("1") && pieceType === "pawn") {
+                triggerToast("Les pions ne peuvent pas être placés en première ligne !");
+                return;
+            }
 
             if (source === "collection") {
                 // Drop from collection to board

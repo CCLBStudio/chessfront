@@ -51,7 +51,6 @@ const loots: Loot[] = [
 function getRandomLoot(probabilities: Record<Loot, number>): Loot {
     const totalWeight = loots.reduce((sum, loot) => sum + probabilities[loot], 0);
     let random = Math.random() * totalWeight;
-    console.log("random:", random);
 
     for (const loot of loots) {
         random -= probabilities[loot];

@@ -17,6 +17,7 @@ import { wait } from '@/utils/wait';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { addLootToCollection } from '../../store/slices/playerArmy';
+import { generateRandomBalancedFen } from '../services/fenGenerator';
 
 
 const ANIMATION_DURATION = 0.1;
@@ -27,8 +28,8 @@ const defaultPlayerStrength: TeamStrength = {
     skillLevel: [17, 19]
 };
 const defaultOpponentStrength: TeamStrength = {
-    depth: [1, 2],
-    skillLevel: [1, 2]
+    depth: [8, 10],
+    skillLevel: [15, 17]
 };
 
 type TeamStrength = {
@@ -60,6 +61,16 @@ function randomIntFromRange([a, b]: [number, number]): number {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function newChess(fen: string): Chess {
+    try {
+        const newFen = generateRandomBalancedFen(fen);
+        return new Chess(newFen, { skipValidation: false, });
+    } catch (e) {
+        console.error("Invalid saved FEN, falling back to standard chess starting FEN.", e);
+        return new Chess();
+    }
+}
+
 export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void }) {
     const dispatch = useDispatch();
     const savedFen = useSelector((state: RootState) => state.playerArmy.fen);
@@ -73,12 +84,7 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
 
     const chessRef = useRef<Chess>(null!);
     if (!chessRef.current) {
-        try {
-            chessRef.current = new Chess(savedFen || undefined);
-        } catch (e) {
-            console.error("Invalid saved FEN, falling back to standard chess starting FEN.", e);
-            chessRef.current = new Chess();
-        }
+        chessRef.current = newChess(savedFen);
     }
 
     const engineRef = useRef<ChessEngine | null>(null);
@@ -181,11 +187,21 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
             const currentTurn = chess.turn();
             const teamStrength = currentTurn === "w" ? playerTeamStrength : opponentTeamStrength;
 
-            const bestMoveUci = await engine.getBestMove(chess.fen(), currentTurn === "w", { depth: randomIntFromRange(teamStrength.depth) });
+            let bestMoveUci = await engine.getBestMove(chess.fen(), currentTurn === "w", { depth: randomIntFromRange(teamStrength.depth) });
 
             if (!bestMoveUci || bestMoveUci === "(none)" || bestMoveUci.length < 4) {
                 console.log("No best move found", bestMoveUci);
-                break;
+                const moves = chess.moves({ verbose: true });
+
+
+                if (moves.length === 0) {
+                    console.log("No legal moves available");
+                    break;
+                }
+
+                const randomMove = moves[Math.floor(Math.random() * moves.length)];
+                bestMoveUci = randomMove.from + randomMove.to + (randomMove.promotion ?? "");
+                console.log('random uci move :', bestMoveUci);
             }
 
             const from = bestMoveUci.slice(0, 2);
@@ -300,12 +316,7 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
         };
 
         // 1. Reset logic state
-        try {
-            chessRef.current = new Chess(savedFen || undefined);
-        } catch (e) {
-            console.error("Invalid saved FEN, falling back to standard chess starting FEN.", e);
-            chessRef.current = new Chess();
-        }
+        chessRef.current = newChess(savedFen);
         setFen(chessRef.current.fen());
         setLastMove(null);
         setGameOverReason(null);
@@ -397,7 +408,6 @@ export default function BattleScene({ onEditArmy }: { onEditArmy?: () => void })
         if (gameOver) {
             const rolledLoot = roll(gameOver, winnerRef.current === 'p');
             lootRef.current = rolledLoot;
-            console.log("Loot:", rolledLoot);
             dispatch(addLootToCollection(rolledLoot));
         }
 
