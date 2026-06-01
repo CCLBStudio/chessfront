@@ -67,8 +67,8 @@ function randomInt(min: number, max: number) {
 }
 
 function generateBlackArmy(target: number, tolerance: [number, number]) {
-    const min = Math.max(8, Math.ceil(target * (1 - tolerance[0])));
-    const max = Math.max(8, Math.ceil(target * (1 + tolerance[1])));
+    const min = Math.max(4, Math.ceil(target * (1 - tolerance[0])));
+    const max = Math.max(6, Math.ceil(target * (1 + tolerance[1])));
     const maxSlots = 16;
 
     const pieces: Piece[] = ['p', 'n', 'b', 'r', 'q'];
@@ -183,7 +183,7 @@ function computeBlackCastling(board: string[][]): string {
     return castling || "-";
 }
 
-export function generateRandomBalancedFen(inputFen: string, tolerance: [number, number] = [0.05, 0.25]): string {
+export function generateRandomBalancedFen(inputFen: string, tolerance: [number, number] = [0.05, 0.15]): string {
     const { board, turn, castling, ep, halfmove, fullmove } = parseFen(inputFen);
     const grid = boardToArray(board);
 
