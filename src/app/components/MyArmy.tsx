@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../../store";
-import { setFen, updateCollection, resetArmy, Collection } from "../../store/slices/playerArmy";
+import { setFen, updateCollection, Collection } from "../../store/slices/playerArmy";
 import { Loot } from "../services/loot";
 import style from "../styles/myArmyStyle.module.css";
 
@@ -288,10 +288,55 @@ export default function MyArmy({ onBackToBattle }: MyArmyProps) {
         saveToRedux(nextBoard, nextCollection, `Pièce récupérée : +1 ${getFrenchPieceName(pieceType)}`);
     };
 
-    // Reset to Standard Chess Layout
+    // Reset to Standard Chess Layout while preserving total pieces pool (excluding King)
     const handleReset = () => {
-        dispatch(resetArmy());
-        triggerToast("Échiquier réinitialisé par défaut !");
+        // 1. Calculate total pieces in pool (board + collection)
+        const totalPieces: Record<Loot, number> = {
+            pawn: collection.pawn,
+            knight: collection.knight,
+            bishop: collection.bishop,
+            rook: collection.rook,
+            queen: collection.queen
+        };
+
+        for (const [sq, piece] of Object.entries(boardMap)) {
+            if (piece.startsWith("white_") && piece !== "white_king") {
+                const type = piece.replace("white_", "") as Loot;
+                if (totalPieces[type] !== undefined) {
+                    totalPieces[type]++;
+                }
+            }
+        }
+
+        // 2. Build the new board map (keep black pieces, place White King and up to 3 pawns)
+        const nextBoard: Record<string, string> = {};
+        for (const [sq, piece] of Object.entries(boardMap)) {
+            if (piece.startsWith("black_")) {
+                nextBoard[sq] = piece;
+            }
+        }
+
+        // Always place the White King on e1
+        nextBoard["e1"] = "white_king";
+
+        // Place up to 3 pawns above the King (on e2, d2, f2)
+        const pawnSquares = ["e2", "d2", "f2"];
+        const pawnsToPlace = Math.min(3, totalPieces.pawn);
+        for (let i = 0; i < pawnsToPlace; i++) {
+            nextBoard[pawnSquares[i]] = "white_pawn";
+        }
+
+        // 3. Calculate new collection
+        const nextCollection: Collection = {
+            pawn: Math.max(0, totalPieces.pawn - pawnsToPlace),
+            knight: totalPieces.knight,
+            bishop: totalPieces.bishop,
+            rook: totalPieces.rook,
+            queen: totalPieces.queen
+        };
+
+        // 4. Save to Redux store
+        saveToRedux(nextBoard, nextCollection, "Échiquier réinitialisé (pièces préservées dans la réserve) !");
     };
 
     // Clear board and reclaim all pieces except the King

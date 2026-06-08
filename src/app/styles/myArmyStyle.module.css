@@ -82,33 +82,6 @@
     justify-items: center;
 }
 
-.coordRowLabel {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: 10px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.6);
-    font-family: var(--font-trajan), sans-serif;
-    user-select: none;
-}
-
-.coordColLabel {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-top: 10px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.6);
-    font-family: var(--font-trajan), sans-serif;
-    text-transform: uppercase;
-    user-select: none;
-}
-
 .chessboard {
     display: grid;
     grid-template-columns: repeat(8, 1fr);

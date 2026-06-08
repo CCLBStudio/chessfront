@@ -46,16 +46,6 @@ export const playerArmySlice = createSlice({
         updateCollection: (state, action: PayloadAction<Collection>) => {
             state.collection = action.payload;
         },
-        resetArmy: (state) => {
-            state.fen = "rnbqkbnr/pppppppp/8/8/8/8/3PPP2/4K3 w kq - 0 1";
-            state.collection = {
-                pawn: 2,
-                knight: 1,
-                bishop: 1,
-                rook: 0,
-                queen: 0,
-            };
-        }
     },
 })
 
@@ -64,7 +54,6 @@ export const {
     setPiecesTextureFolderUrl,
     addLootToCollection,
     updateCollection,
-    resetArmy
 } = playerArmySlice.actions;
 
 export default playerArmySlice.reducer;
