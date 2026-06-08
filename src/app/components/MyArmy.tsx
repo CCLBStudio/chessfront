@@ -9,7 +9,7 @@ import style from "../styles/myArmyStyle.module.css";
 
 // --- HELPERS FOR FEN & BOARD MAP CONVERSIONS ---
 
-const colsList = ["h", "g", "f", "e", "d", "c", "b", "a"];
+const colsList = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const rowsList = [8, 7, 6, 5, 4, 3, 2, 1];
 
 const pieceMap: Record<string, string> = {
@@ -61,7 +61,7 @@ function parseFen(fen: string): Record<string, string> {
             if (/\d/.test(char)) {
                 colIndex += parseInt(char, 10);
             } else {
-                const colName = colsList[7 - colIndex]; // reverse cols mapping so standard index matches
+                const colName = colsList[colIndex];
                 const square = colName + actualRow;
                 const pieceName = pieceMap[char];
                 if (pieceName) {
@@ -304,16 +304,22 @@ export default function MyArmy({ onBackToBattle }: MyArmyProps) {
         let whiteKingSquare = "e1";
 
         for (const [sq, piece] of Object.entries(boardMap)) {
+
             if (piece.startsWith("black_")) {
                 nextBoard[sq] = piece;
             } else if (piece === "white_king") {
                 nextBoard[sq] = piece;
                 whiteKingSquare = sq;
                 whiteKingFound = true;
+                console.log(sq);
+
+
             } else {
                 // Reclaim other white pieces
                 const type = piece.replace("white_", "") as Loot;
                 reclaimedPieces[type]++;
+                console.log(sq);
+
             }
         }
 
@@ -389,39 +395,42 @@ export default function MyArmy({ onBackToBattle }: MyArmyProps) {
 
                     {/* Chessboard */}
                     <div className={style.boardWrapper}>
-                        <div className={style.chessboard}>
-                            {rowsList.map((row, rowIndex) => (
-                                colsList.map((col, colIndex) => {
-                                    const square = col + row;
-                                    const piece = boardMap[square];
-                                    const isLight = (rowIndex + colIndex) % 2 === 0;
-                                    const isDroppable = isPlacementZone(square);
-                                    const isCurrentOver = dragOverCell === square;
+                        <div className={style.boardContainer}>
+                            {/* Chessboard */}
+                            <div className={style.chessboard}>
+                                {rowsList.map((row, rowIndex) => (
+                                    colsList.map((col, colIndex) => {
+                                        const square = col + row;
+                                        const piece = boardMap[square];
+                                        const isLight = (rowIndex + colIndex) % 2 === 0;
+                                        const isDroppable = isPlacementZone(square);
+                                        const isCurrentOver = dragOverCell === square;
 
-                                    return (
-                                        <div
-                                            key={square}
-                                            className={`${style.cell} ${isLight ? style.lightCell : style.darkCell} ${isDroppable ? style.activePlacementZone : ""
-                                                } ${isCurrentOver ? style.dragOverActive : ""}`}
-                                            onDragOver={(e) => handleDragOver(e, square)}
-                                            onDragLeave={handleDragLeave}
-                                            onDrop={(e) => handleDrop(e, square)}
-                                            onContextMenu={(e) => handleCellRightClick(e, square)}
-                                        >
-                                            {/* Piece sprite */}
-                                            {piece && (
-                                                <img
-                                                    src={`/assets/pieces/default/${piece}.png`}
-                                                    alt={piece}
-                                                    draggable={piece.startsWith("white_")}
-                                                    onDragStart={(e) => handleDragStartFromBoard(e, square)}
-                                                    className={`${style.pieceImage} ${piece === "white_king" ? style.kingPiece : ""}`}
-                                                />
-                                            )}
-                                        </div>
-                                    );
-                                })
-                            ))}
+                                        return (
+                                            <div
+                                                key={square}
+                                                className={`${style.cell} ${isLight ? style.lightCell : style.darkCell} ${isDroppable ? style.activePlacementZone : ""
+                                                    } ${isCurrentOver ? style.dragOverActive : ""}`}
+                                                onDragOver={(e) => handleDragOver(e, square)}
+                                                onDragLeave={handleDragLeave}
+                                                onDrop={(e) => handleDrop(e, square)}
+                                                onContextMenu={(e) => handleCellRightClick(e, square)}
+                                            >
+                                                {/* Piece sprite */}
+                                                {piece && (
+                                                    <img
+                                                        src={`/assets/pieces/default/${piece}.png`}
+                                                        alt={piece}
+                                                        draggable={piece.startsWith("white_")}
+                                                        onDragStart={(e) => handleDragStartFromBoard(e, square)}
+                                                        className={`${style.pieceImage} ${piece === "white_king" ? style.kingPiece : ""}`}
+                                                    />
+                                                )}
+                                            </div>
+                                        );
+                                    })
+                                ))}
+                            </div>
                         </div>
                     </div>
 

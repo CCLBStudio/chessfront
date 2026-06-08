@@ -47,7 +47,7 @@ export const playerArmySlice = createSlice({
             state.collection = action.payload;
         },
         resetArmy: (state) => {
-            state.fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+            state.fen = "rnbqkbnr/pppppppp/8/8/8/8/3PPP2/4K3 w kq - 0 1";
             state.collection = {
                 pawn: 2,
                 knight: 1,
