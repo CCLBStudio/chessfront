@@ -64,10 +64,8 @@ function randomIntFromRange([a, b]: [number, number]): number {
 
 function newChess(fen: string): Chess {
     try {
-        console.log("received fen : ", fen);
         const newFen = generateRandomBalancedFen(fen);
-        console.log("balanced generated fen:", newFen);
-        return new Chess(newFen, { skipValidation: true, });
+        return new Chess(newFen, { skipValidation: false, });
     } catch (e) {
         console.error("Invalid saved FEN, falling back to standard chess starting FEN.", e);
         return new Chess();

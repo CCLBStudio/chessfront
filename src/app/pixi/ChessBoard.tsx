@@ -3,7 +3,7 @@ import gsap from "gsap";
 import { BoardCell } from "./BoardCell";
 import { ChessPiece } from "./ChessPiece";
 
-const cols = ["h", "g", "f", "e", "d", "c", "b", "a"];
+const cols = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const rows = [8, 7, 6, 5, 4, 3, 2, 1];
 
 
